@@ -24,6 +24,9 @@ cp arch/arm/boot/dts/overlays/{*.dtb*,README} ~/raspberrypi-firmware-${firmware_
 echo "Extracting Debian packaging files"
 cd ~/raspberrypi-firmware-${firmware_version}/
 tar xf ../raspberrypi-firmware_${firmware_version}-1.debian.tar.xz
+echo "Remove some unexpected dtb files"
+files_to_remove=$(comm -13 <(tar tf ../raspberrypi-firmware_${firmware_version}.orig.tar.gz | sed -r '/\/$/d;s:[^/]+/::' | sort) <(find * -type f | sed '/debian/d' | sort))
+for file in $files_to_remove; do rm $file; done
 echo "Modify Debian changelog"
 package_version=$(sed -n -re "1s:(-.+)\):\1.mptcp):" -e 1p debian/changelog)
 package_content=$(sed -n 3p debian/changelog)
