@@ -3,30 +3,29 @@
 echo "Get package orig"
 firmware_version=$(wget -q -O- https://github.com/raspberrypi/firmware/releases | grep '/raspberrypi/firmware/archive/.' | head -n1 | sed -re 's:.*/(.+)(\.zip|\.tar\.gz).*:\1:')
 
-wget -nv  https://archive.raspberrypi.org/debian/pool/main/r/raspberrypi-firmware/raspberrypi-firmware_${firmware_version}.orig.tar.gz
-wget -nv  https://archive.raspberrypi.org/debian/pool/main/r/raspberrypi-firmware/raspberrypi-firmware_${firmware_version}-1.debian.tar.xz
+[ -e raspberrypi-firmware_${firmware_version}.orig.tar.gz ] || wget -nv https://archive.raspberrypi.org/debian/pool/main/r/raspberrypi-firmware/raspberrypi-firmware_${firmware_version}.orig.tar.gz
+[ -e raspberrypi-firmware_${firmware_version}-1.debian.tar.xz ] || wget -nv https://archive.raspberrypi.org/debian/pool/main/r/raspberrypi-firmware/raspberrypi-firmware_${firmware_version}-1.debian.tar.xz
 
 KERNEL=kernel7
 
-echo "Extracting archive"
+echo "Install kernel to temporary directory"
+mkdir -p raspberrypi-firmware-${firmware_version}-mptcp/boot/overlays/
+cd linux
+make ARCH=arm INSTALL_MOD_PATH=../raspberrypi-firmware-${firmware_version}-mptcp modules_install
+cp arch/arm/boot/zImage ../raspberrypi-firmware-${firmware_version}-mptcp/boot/$KERNEL.img
+cp arch/arm/boot/dts/*.dtb ../raspberrypi-firmware-${firmware_version}-mptcp/boot/
+cp arch/arm/boot/dts/overlays/{*.dtb*,README} ../raspberrypi-firmware-${firmware_version}-mptcp/boot/overlays/
+cd ..
+echo "Extracting raspberrypi-firmware archive"
 rm -rf raspberrypi-firmware-${firmware_version}/
 tar xf raspberrypi-firmware_${firmware_version}.orig.tar.gz
-cd raspberrypi-firmware-${firmware_version}/
-mkdir lib
-ln -s ../modules lib/
 echo "Add custom kernel $KERNEL"
-cd ~/linux/
-make ARCH=arm INSTALL_MOD_PATH=~/raspberrypi-firmware-${firmware_version} modules_install
-cp arch/arm/boot/zImage ~/raspberrypi-firmware-${firmware_version}/boot/$KERNEL.img
-cp arch/arm/boot/dts/*.dtb ~/raspberrypi-firmware-${firmware_version}/boot/
-cp arch/arm/boot/dts/overlays/{*.dtb*,README} ~/raspberrypi-firmware-${firmware_version}/boot/overlays/
+rsync -a --del raspberrypi-firmware-${firmware_version}-mptcp/lib/modules/* raspberrypi-firmware-${firmware_version}/modules/
+rsync -a --existing raspberrypi-firmware-${firmware_version}-mptcp/boot/ raspberrypi-firmware-${firmware_version}/boot/
 
 echo "Extracting Debian packaging files"
-cd ~/raspberrypi-firmware-${firmware_version}/
+cd raspberrypi-firmware-${firmware_version}/
 tar xf ../raspberrypi-firmware_${firmware_version}-1.debian.tar.xz
-echo "Remove some unexpected dtb files"
-files_to_remove=$(comm -13 <(tar tf ../raspberrypi-firmware_${firmware_version}.orig.tar.gz | sed -r '/\/$/d;s:[^/]+/::' | sort) <(find * -type f | sed '/debian/d' | sort))
-for file in $files_to_remove; do rm $file; done
 echo "Modify Debian changelog"
 package_version=$(sed -n -re "1s:(-.+)\):\1.mptcp):" -e 1p debian/changelog)
 package_content=$(sed -n 3p debian/changelog)

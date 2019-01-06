@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
                 tar \
                 libncurses-dev \
                 build-essential \
-                fakeroot \
+                fakeroot ccache \
 #               kernel-package \
                 u-boot-tools \
                 zlib1g-dev \
@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
                 git bc \
                 debhelper quilt \
                 kmod \
+                rsync \
         && rm -rf /var/lib/apt/lists/*
 
 # https://www.raspberrypi.org/documentation/linux/kernel/building.md
